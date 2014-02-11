@@ -17,7 +17,7 @@ def index():
 
 	for region in config.region_list():
 		conn = connect_to_region(region, aws_access_key_id=creds['AWS_ACCESS_KEY_ID'], aws_secret_access_key=creds['AWS_SECRET_ACCESS_KEY'])
-		zones = conn.get_all_zones()	
+		zones = conn.get_all_zones()
 		instances = conn.get_all_instance_status()
 		instance_count = len(instances)
 		ebs = conn.get_all_volumes()
@@ -25,11 +25,11 @@ def index():
 		unattached_ebs = 0
 		unattached_eli = 0
 		event_count = 0
-	
+
 		for instance in instances:
 			events = instance.events
 			if events:
-				event_count = event_count + 1	
+				event_count = event_count + 1
 
 		for vol in ebs:
 			state = vol.attachment_state()
@@ -49,7 +49,7 @@ def index():
 		elb = connelb.get_all_load_balancers()
 		elb_count = len(elb)
 		list.append({ 'region' : region, 'zones': zones, 'instance_count' : instance_count, 'ebscount' : ebscount, 'unattached_ebs' : unattached_ebs, 'eli_count' : eli_count, 'unattached_eli' : unattached_eli, 'elb_count' : elb_count, 'event_count' : event_count})
-		
+
 	return render_template('index.html',list=list)
 
 @app.route('/ebs_volumes/<region>/')
@@ -57,24 +57,24 @@ def ebs_volumes(region=None):
 	creds = config.get_ec2_conf()
 	conn = connect_to_region(region, aws_access_key_id=creds['AWS_ACCESS_KEY_ID'], aws_secret_access_key=creds['AWS_SECRET_ACCESS_KEY'])
 	ebs = conn.get_all_volumes()
-	ebs_vol = []	
+	ebs_vol = []
 	for vol in ebs:
 		state = vol.attachment_state()
 		if state == None:
 			ebs_info = { 'id' : vol.id, 'size' : vol.size, 'iops' : vol.iops, 'status' : vol.status }
 			ebs_vol.append(ebs_info)
 	return render_template('ebs_volume.html',ebs_vol=ebs_vol,region=region)
-			
+
 @app.route('/ebs_volumes/<region>/delete/<vol_id>')
 def delete_ebs_vol(region=None,vol_id=None):
-	creds = config.get_ec2_conf()	
+	creds = config.get_ec2_conf()
 	conn = connect_to_region(region, aws_access_key_id=creds['AWS_ACCESS_KEY_ID'], aws_secret_access_key=creds['AWS_SECRET_ACCESS_KEY'])
 	vol_id = vol_id.encode('ascii')
 	vol_ids = conn.get_all_volumes(volume_ids=vol_id)
 	for vol in vol_ids:
 		vol.delete()
 	return redirect(url_for('ebs_volumes', region=region))
-	
+
 @app.route('/elastic_ips/<region>/')
 def elastic_ips(region=None):
 	creds = config.get_ec2_conf()
@@ -98,7 +98,7 @@ def delete_elastic_ip(region=None,ip=None):
 	for eli in elis:
 		eli.release()
 	return redirect(url_for('elastic_ips', region=region))
-	
+
 
 @app.route('/instance_events/<region>/')
 def instance_events(region=None):
@@ -112,7 +112,7 @@ def instance_events(region=None):
 			event_info = { 'instance_id' : instance.id, 'event' : instance.events[0].code, 'description' : instance.events[0].description, 'event_before' : instance.events[0].not_before, 'event_after': instance.events[0].not_after }
 			instance_event_list.append(event_info)
 	return render_template('instance_events.html', instance_event_list=instance_event_list)
-			
+
 if __name__ == '__main__':
 	app.debug = True
-	app.run(host='0.0.0.0')
+	app.run(host='127.0.0.1')
