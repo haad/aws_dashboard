@@ -68,7 +68,7 @@ def ebs_volumes(region=None):
     for vol in ebs:
         state = vol.attachment_state()
         if state == None:
-            ebs_info = { 'id' : vol.id, 'size' : vol.size, 'iops' : vol.iops, 'status' : vol.status }
+            ebs_info = { 'id' : vol.id, 'size' : vol.size, 'iops' : vol.iops, 'status' : vol.status, 'create_time' : vol.create_time }
             ebs_vol.append(ebs_info)
     return render_template('ebs_volume.html', ebs_vol=ebs_vol, region=region)
 
