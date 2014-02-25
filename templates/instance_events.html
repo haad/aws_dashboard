@@ -22,14 +22,17 @@
 	<p>
 		<table class="table table-striped">
 		<tr style="font-weight:bold">
-		<td>Instance ID</td><td>Event</td><td>Description</td><td>Event Before</td><td>Event After</td>
+		<td>Instance ID</td><td>Hostname</td><td>Event</td><td>Description</td><td>Event Before</td><td>Event After</td>
 		</tr>
 		{% for instance_event in instance_event_list %}
 		<tr>
 		<td>
 		{{instance_event['instance_id']}}
 		</td>
-		<td>
+        <td>
+        {{instance_event['instance_name']}}
+        </td>
+        <td>
 		{{instance_event['event']}}
 		</td>
 		<td>

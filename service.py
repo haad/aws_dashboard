@@ -20,7 +20,7 @@ def index():
     for region in config.region_list():
         conn = connect_to_region(region, aws_access_key_id=creds['AWS_ACCESS_KEY_ID'], aws_secret_access_key=creds['AWS_SECRET_ACCESS_KEY'])
         zones = conn.get_all_zones()
-        instances = conn.get_all_instance_status()
+        instances = conn.get_all_instance_status(max_results=2000)
         instance_count = len(instances)
         ebs = conn.get_all_volumes()
         ebscount = len(ebs)
@@ -119,7 +119,8 @@ def instance_events(region=None):
     for instance in instances:
         event = instance.events
         if event:
-            event_info = { 'instance_id' : instance.id, 'event' : instance.events[0].code, 'description' : instance.events[0].description, 'event_before' : instance.events[0].not_before, 'event_after': instance.events[0].not_after }
+            instance_name = conn.get_all_instances(instance.id)
+            event_info = { 'instance_id' : instance.id, 'instance_name' : instance_name[0].instances[0].tags['Name'], 'event' : instance.events[0].code, 'description' : instance.events[0].description, 'event_before' : instance.events[0].not_before, 'event_after': instance.events[0].not_after }
             instance_event_list.append(event_info)
     return render_template('instance_events.html', instance_event_list=instance_event_list)
 
