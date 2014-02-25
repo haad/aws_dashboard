@@ -24,7 +24,7 @@
 		<table class="table table-striped">
 		{% for zone in dict['zones'] %}
 		<tr>
-		<td>{{zone}}</td>
+		<td>{{zone.name}}</td>
 		<td>
 		{% if zone.state == 'available' %} <button class="btn btn-mini btn-primary" type="button">H</button>
 		{% else %}
