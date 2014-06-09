@@ -69,7 +69,7 @@
 	</td>
 
     <td>
-    {% if dict['improperelb'] == 0 %}
+    {% if dict['improper_elb'] == 0 %}
     <button class="btn btn-mini btn-primary" type="button">{{dict['elb_count']}}</button>
     {% else %}
     <a href="/elbimproper/{{dict['region']}}"><button class="btn btn-mini btn-danger" type="button">{{dict['elb_count']}}</button></a>
