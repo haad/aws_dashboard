@@ -31,7 +31,7 @@ def index():
 
         for instance in instances:
             events = instance.events
-            if events:
+            if events and "Completed" not in instance.events[0].description:
                 event_count = event_count + 1
 
         for vol in ebs:
@@ -118,7 +118,7 @@ def instance_events(region=None):
     instance_event_list = []
     for instance in instances:
         event = instance.events
-        if event:
+        if event and "Completed" not in instance.events[0].description:
             instance_name = conn.get_all_instances([instance.id])
             event_info = { 'instance_id' : instance.id, 'instance_name' : instance_name[0].instances[0].tags['Name'], 'event' : instance.events[0].code, 'description' : instance.events[0].description, 'event_before' : instance.events[0].not_before, 'event_after': instance.events[0].not_after }
             instance_event_list.append(event_info)
