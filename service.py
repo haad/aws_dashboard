@@ -65,7 +65,7 @@ def index():
         elb_count = len(elbs)
 
         for elb in elbs:
-            if len(elb.instances) < 2:
+            if len(elb.instances) < 1:
                 improperelb = improperelb + 1
         list.append({ 'region' : region, 'zones': zones, 'instance_count' : instance_count, 'ebscount' : ebscount, 'unattached_ebs' : unattached_ebs, 'eli_count' : eli_count, 'unattached_eli' : unattached_eli, 'elb_count' : elb_count, 'event_count' : event_count, 'improper_elb': improperelb, 'subnet_counter': subnet_counter, 'ip_low_subnet': ip_low_subnet})
 
@@ -145,7 +145,7 @@ def elbimproper(region=None):
     elbs = connelb.get_all_load_balancers()
     badelb = []
     for elb in elbs:
-        if len(elb.instances) < 2:
+        if len(elb.instances) < 1:
             elb_info = {'elb_name': elb.dns_name, 'elb_attached_instances': elb.instances, 'elb_healthcheck': elb.health_check}
             badelb.append(elb_info)
     return render_template('elb.html', badelb=badelb)
