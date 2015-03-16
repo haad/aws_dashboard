@@ -50,7 +50,13 @@ def index():
         for vol in ebs:
             state = vol.attachment_state()
             if state == None:
-                unattached_ebs = unattached_ebs + 1
+                try:
+                    vol.tags['Status']
+                    if vol.tags['Status'] == "InUse":
+                        continue
+                except KeyError:
+                    unattached_ebs = unattached_ebs + 1
+
 
         elis = conn.get_all_addresses()
         eli_count = len(elis)
@@ -81,7 +87,7 @@ def ebs_volumes(region=None):
     for vol in ebs:
         state = vol.attachment_state()
         if state == None:
-            ebs_info = { 'id' : vol.id, 'size' : vol.size, 'iops' : vol.iops, 'status' : vol.status, 'create_time' : vol.create_time }
+            ebs_info = { 'id' : vol.id, 'size' : vol.size, 'iops' : vol.iops, 'status' : vol.status, 'create_time' : vol.create_time , 'tags' : vol.tags}
             ebs_vol.append(ebs_info)
     return render_template('ebs_volume.html', ebs_vol=ebs_vol, region=region)
 
