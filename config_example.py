@@ -9,3 +9,15 @@ def get_ec2_conf():
 def region_list():
     region_list = ['us-east-1','us-west-1','us-west-2']
     return region_list
+
+def app_debug():
+    debug = True
+    return debug
+
+def listen_port():
+    port = 5050
+    return port
+
+def listen_host():
+    host = 'localhost'
+    return host

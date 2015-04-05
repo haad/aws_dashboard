@@ -7,40 +7,118 @@ import boto.ec2.elb
 import boto
 from boto.ec2 import *
 import boto.vpc
+import datetime
+from datetime import datetime, timedelta
 
+import cProfile
 
 app = Flask(__name__)
 
+class AWSDash(object):
+    """Helper methods for AWS access"""
+    def __init__(self, aws_key, aws_secret):
+        super(AWSDash, self).__init__()
+        self.aws_key = aws_key
+        self.aws_secret = aws_secret
+        self.timeout = 300
+        self.conn = None
+        self.vpcconn = None
+        self.elbconn = None
+        self.zones = {}
+        self.instances = {}
+        self.ebs = {}
+        self.subnets = {}
+        self.loadbs = {}
+        self.addrs = {}
+
+    def get_time_diff(self, start_time):
+        (start_time - datetime.now()).total_seconds()
+
+    def get_conn(self, region):
+        self.conn = connect_to_region(region, aws_access_key_id=self.aws_key,
+            aws_secret_access_key=self.aws_secret)
+
+    def get_vpc_conn(self, region):
+        self.vpcconn = boto.vpc.connect_to_region(region, aws_access_key_id=self.aws_key,
+            aws_secret_access_key=self.aws_secret)
+
+    def get_elb_conn(self, region):
+        self.elbconn = boto.ec2.elb.connect_to_region(region, aws_access_key_id=self.aws_key,
+            aws_secret_access_key=self.aws_secret)
+
+    def get_zones(self, region):
+        if region not in self.zones or self.get_time_diff(self.zones[region]['time']) > self.timeout:
+            self.get_conn(region)
+            self.zones[region] = {}
+            self.zones[region]['res'] = self.conn.get_all_zones()
+            self.zones[region]['time'] = datetime.now()
+        return self.zones[region]['res']
+
+    def get_instances(self, region):
+        if region not in self.instances or self.get_time_diff(self.instances[region]['time']) > self.timeout:
+            self.get_conn(region)
+            self.instances[region] = {}
+            self.instances[region]['res'] = self.conn.get_all_instance_status(max_results=2000)
+            self.instances[region]['time'] = datetime.now()
+        return self.instances[region]['res']
+
+    def get_ebs(self, region):
+        if region not in self.ebs or self.get_time_diff(self.ebs[region]['time']) > self.timeout:
+            self.get_conn(region)
+            self.ebs[region] = {}
+            self.ebs[region]['res'] = self.conn.get_all_volumes()
+            self.ebs[region]['time'] = datetime.now()
+        return self.ebs[region]['res']
+
+    def get_addresses(self, region):
+        if region not in self.addrs or self.get_time_diff(self.addrs[region]['time']) > self.timeout:
+            self.get_conn(region)
+            self.addrs[region] = {}
+            self.addrs[region]['res'] = self.conn.get_all_addresses()
+            self.addrs[region]['time'] = datetime.now()
+        return self.addrs[region]['res']
+
+    def get_subnets(self, region):
+        if region not in self.subnets or self.get_time_diff(self.subnets[region]['time']) > self.timeout:
+            self.get_vpc_conn(region)
+            self.subnets[region] = {}
+            self.subnets[region]['res'] = self.vpcconn.get_all_subnets()
+            self.subnets[region]['time'] = datetime.now()
+        return self.subnets[region]['res']
+
+    def get_loadbalancers(self, region):
+        if region not in self.loadbs or self.get_time_diff(self.loadbs[region]['time']) > self.timeout:
+            self.get_elb_conn(region)
+            self.loadbs[region] = {}
+            self.loadbs[region]['res'] = self.elbconn.get_all_load_balancers()
+            self.loadbs[region]['time'] = datetime.now()
+        return self.loadbs[region]['res']
+
+
+creds = config.get_ec2_conf()
+aws = AWSDash(creds['AWS_ACCESS_KEY_ID'], creds['AWS_SECRET_ACCESS_KEY'])
 
 @app.route('/')
 def index():
-
     list = []
-    creds = config.get_ec2_conf()
-    key = creds['AWS_ACCESS_KEY_ID']
-    secret = creds['AWS_SECRET_ACCESS_KEY']
 
     for region in config.region_list():
-        conn = connect_to_region(region, aws_access_key_id=key, aws_secret_access_key=secret)
-        vpcconn = boto.vpc.connect_to_region(region, aws_access_key_id=key, aws_secret_access_key=secret)
-        zones = conn.get_all_zones()
-        instances = conn.get_all_instance_status(max_results=2000)
-        instance_count = len(instances)
-        ebs = conn.get_all_volumes()
-        ebscount = len(ebs)
-        subnets = vpcconn.get_all_subnets()
+        start = datetime.now()
+
+        zones = aws.get_zones(region)
+        instances = aws.get_instances(region)
+        ebs = aws.get_ebs(region)
+        subnets = aws.get_subnets(region)
+
         unattached_ebs = 0
         unattached_eli = 0
         event_count = 0
         improperelb = 0
-        subnet_counter = 0
         ip_low_subnet = 0
-        subnet_counter = len(subnets)
 
         for subnet in subnets:
             if subnet.available_ip_address_count < 15:
                 ip_low_subnet = ip_low_subnet + 1
-
 
         for instance in instances:
             events = instance.events
@@ -57,32 +135,27 @@ def index():
                 except KeyError:
                     unattached_ebs = unattached_ebs + 1
 
-
-        elis = conn.get_all_addresses()
-        eli_count = len(elis)
-
+        elis = aws.get_addresses(region)
         for eli in elis:
             instance_id = eli.instance_id
             if not instance_id:
                 unattached_eli = unattached_eli + 1
 
-        connelb = boto.ec2.elb.connect_to_region(region, aws_access_key_id=creds['AWS_ACCESS_KEY_ID'], aws_secret_access_key=creds['AWS_SECRET_ACCESS_KEY'])
-        elbs = connelb.get_all_load_balancers()
-        elb_count = len(elbs)
-
+        elbs = aws.get_loadbalancers(region)
         for elb in elbs:
             if len(elb.instances) < 1:
                 improperelb = improperelb + 1
-        list.append({ 'region' : region, 'zones': zones, 'instance_count' : instance_count, 'ebscount' : ebscount, 'unattached_ebs' : unattached_ebs, 'eli_count' : eli_count, 'unattached_eli' : unattached_eli, 'elb_count' : elb_count, 'event_count' : event_count, 'improper_elb': improperelb, 'subnet_counter': subnet_counter, 'ip_low_subnet': ip_low_subnet})
-
+        list.append({ 'region' : region, 'zones': zones, 'instance_count' : len(instances), 'ebscount' : len(ebs),
+            'unattached_ebs' : unattached_ebs, 'eli_count' : len(elis), 'unattached_eli' : unattached_eli,
+            'elb_count' : len(elbs), 'event_count' : event_count, 'improper_elb': improperelb,
+            'subnet_counter': len(subnets), 'ip_low_subnet': ip_low_subnet})
+        print (datetime.now()-start).seconds
     return render_template('index.html', list=list)
 
 
 @app.route('/ebs_volumes/<region>/')
 def ebs_volumes(region=None):
-    creds = config.get_ec2_conf()
-    conn = connect_to_region(region, aws_access_key_id=creds['AWS_ACCESS_KEY_ID'], aws_secret_access_key=creds['AWS_SECRET_ACCESS_KEY'])
-    ebs = conn.get_all_volumes()
+    ebs = aws.get_ebs(region)
     ebs_vol = []
     for vol in ebs:
         state = vol.attachment_state()
@@ -105,9 +178,7 @@ def delete_ebs_vol(region=None, vol_id=None):
 
 @app.route('/elastic_ips/<region>/')
 def elastic_ips(region=None):
-    creds = config.get_ec2_conf()
-    conn = connect_to_region(region, aws_access_key_id=creds['AWS_ACCESS_KEY_ID'], aws_secret_access_key=creds['AWS_SECRET_ACCESS_KEY'])
-    elis = conn.get_all_addresses()
+    elis = aws.get_adresses(region)
     un_eli = []
     for eli in elis:
         instance_id = eli.instance_id
@@ -131,9 +202,7 @@ def delete_elastic_ip(region=None, ip=None):
 
 @app.route('/instance_events/<region>/')
 def instance_events(region=None):
-    creds = config.get_ec2_conf()
-    conn = connect_to_region(region, aws_access_key_id=creds['AWS_ACCESS_KEY_ID'], aws_secret_access_key=creds['AWS_SECRET_ACCESS_KEY'])
-    instances = conn.get_all_instance_status()
+    instances = aws.get_instances(region)
     instance_event_list = []
     for instance in instances:
         event = instance.events
@@ -146,9 +215,7 @@ def instance_events(region=None):
 
 @app.route('/elbimproper/<region>/')
 def elbimproper(region=None):
-    creds = config.get_ec2_conf()
-    connelb = boto.ec2.elb.connect_to_region(region, aws_access_key_id=creds['AWS_ACCESS_KEY_ID'], aws_secret_access_key=creds['AWS_SECRET_ACCESS_KEY'])
-    elbs = connelb.get_all_load_balancers()
+    elbs = aws.get_loadbalancers(region)
     badelb = []
     for elb in elbs:
         if len(elb.instances) < 1:
@@ -156,11 +223,10 @@ def elbimproper(region=None):
             badelb.append(elb_info)
     return render_template('elb.html', badelb=badelb)
 
+
 @app.route('/lowipsubnet/<region>/')
 def lowipsubnet(region=None):
-    creds = config.get_ec2_conf()
-    vpcconn = boto.vpc.connect_to_region(region, aws_access_key_id=creds['AWS_ACCESS_KEY_ID'], aws_secret_access_key=creds['AWS_SECRET_ACCESS_KEY'])
-    subnets = vpcconn.get_all_subnets()
+    subnets = aws.get_subnets(region)
     lowsubnet = []
     for subnet in subnets:
         if subnet.available_ip_address_count < 15:
@@ -170,5 +236,5 @@ def lowipsubnet(region=None):
 
 
 if __name__ == '__main__':
-    app.debug = True
-    app.run(host='127.0.0.1', port=config.listen_port())
+    app.debug = config.app_debug()
+    app.run(host=config.listen_host(), port=config.listen_port())
