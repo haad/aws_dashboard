@@ -1,0 +1,20 @@
+{
+  "name": "aws_dashboard",
+  "version": "1.0.0",
+  "homepage": "https://github.com/haad/aws_dashboard",
+  "authors": [
+    "HAMSIK Adam <adh@rsd.com>"
+  ],
+  "description": "AWS Dashboard made with boto, python, flask",
+  "license": "MIT",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "bootstrap": "~3.3.4"
+  }
+}

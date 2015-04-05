@@ -1,45 +1,36 @@
 <!doctype html>
 <html>
 <head>
-</style>
-<link href="../../static/bootstrap.css" rel="stylesheet" media="screen">
-<title>AWS Dashboard - Elastic Load Balancers</title>
+  {% include "head.html" ignore missing %}
+  <title>AWS Dashboard - Elastic Load Balancers</title>
 </head>
 <body>
-<div class="container-fluid"><div class="navbar"><div class="navbar-inner"><div class="container"><a class="brand">Welcome to AWS Dashboard - Elastic Load Balancers</a>
-    <ul class="nav">
-    <li class="divider-vertical"></li>
-    <li><a href="/">EC2</a></li>
-    <li class="divider-vertical"></li>
-    </ul>
-    </div>
-    </div>
-	</div>
-	</div>
+  {% include "navbar.html" ignore missing %}
 
-<div class="row-fluid">
-    <div class="span9 offset1" align="center">
-	<span class="label label-info">Improper ELBs</span></br>
-	<p>
-		<table class="table table-striped" width=1000>
-		<tr style="font-weight:bold">
-		<td>Elastic LB</td><td>Instances</td><td>Health Check</td>
-		</tr>
-		{% for elb in badelb %}
-		<tr>
-		<td>
-		{{elb['elb_name']}}
-		</td>
-		<td>
-		{{elb['elb_attached_instances']}}
-		</td>
-        <td>
-        {{elb['elb_healthcheck']}}
-		</td>
-		</tr>
-		{% endfor %}
-		</table>
-	</div>
-</div>
+  <div class="row">
+    <div class="col-md-9 col-md-offset-1" align="center">
+      <span class="label label-info">Improper ELBs</span></br>
+      <p>
+        <table class="table table-striped" width=1000>
+          <tr style="font-weight:bold">
+            <td>Elastic LB</td><td>Instances</td><td>Health Check</td>
+          </tr>
+          {% for elb in badelb %}
+          <tr>
+            <td>
+              {{elb['elb_name']}}
+            </td>
+            <td>
+              {{elb['elb_attached_instances']}}
+            </td>
+            <td>
+              {{elb['elb_healthcheck']}}
+            </td>
+          </tr>
+          {% endfor %}
+        </table>
+      </p>
+    </div>
+  </div>
 </body>
 </html>
