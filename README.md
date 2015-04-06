@@ -2,15 +2,16 @@
 
 Amazon Web Services Dashboard
 
-Forked from https://github.com/bcarpio/aws_dashboard
+Forked from https://github.com/haad/aws_dashboard
 
 ## Ability
 
-* Shows the Instance retirements
+* Shows running instances
 * Unattached EBSs
 * Unused EIPs
 * ELBs with only 1 instance attached
+* Show VPC subnets
 
 ## Configure
 
-Please refer to the wiki
+AWS dashboard requires redis server, which is used as a cache for boto requests.
