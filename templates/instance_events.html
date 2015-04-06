@@ -7,14 +7,22 @@
 <body>
   {% include "navbar.html" ignore missing %}
 
-  <div class="row">
-    <div class="col-md-9 col-md-offset-1" align="center">
+  <div class="container-fluid">
+    <div class="row">
+    <div class="col-md-12 col-md-offset-1" align="center">
       <span class="label label-info">Instance Events</span></br>
       <p>
-        <table class="table table-striped">
-          <tr style="font-weight:bold">
-            <td>Instance ID</td><td>Hostname</td><td>Event</td><td>Description</td><td>Event Before</td><td>Event After</td>
-          </tr>
+        <table class="table table-striped display">
+          <thead>
+            <tr style="font-weight:bold">
+              <td>Instance ID</td>
+              <td>Hostname</td>
+              <td>Event</td>
+              <td>Description</td>
+              <td>Event Before</td>
+              <td>Event After</td>
+            </tr>
+          </thead>
           {% for instance_event in instance_event_list %}
           <tr>
             <td>

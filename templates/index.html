@@ -42,7 +42,7 @@
               </td>
               <td>
                 {% if dict['event_count'] == 0 %}
-                  <button class="btn btn-mini btn-success" type="button">{{ dict['instance_count'] }}</button>
+                  <a href="/instance_events/{{ dict['region'] }}"><button class="btn btn-mini btn-success" type="button">{{ dict['instance_count'] }}</button></a>
                 {% else %}
                   <a href="/instance_events/{{ dict['region'] }}"><button class="btn btn-mini btn-danger" type="button">{{ dict['instance_count'] }}</button></a>
                 {% endif %}
@@ -50,7 +50,7 @@
 
               <td>
                 {% if dict['unattached_ebs'] == 0 %}
-                  <button class="btn btn-mini btn-success" type="button">{{ dict['ebscount'] }}</button>
+                  <a href="/ebs_volumes/{{ dict['region'] }}"><button class="btn btn-mini btn-success" type="button">{{ dict['ebscount'] }}</button></a>
                 {% else %}
                   <a href="/ebs_volumes/{{ dict['region'] }}"><button class="btn btn-mini btn-danger" type="button">{{ dict['ebscount'] }}</button></a>
                 {% endif %}
@@ -58,7 +58,7 @@
 
               <td>
                 {% if dict['unattached_eli'] == 0 %}
-                  <button class="btn btn-mini btn-success" type="button">{{ dict['eli_count'] }}</button>
+                  <a href="/elastic_ips/{{ dict['region'] }}"><button class="btn btn-mini btn-success" type="button">{{ dict['eli_count'] }}</button></a>
                 {% else %}
                   <a href="/elastic_ips/{{ dict['region'] }}"><button class="btn btn-mini btn-danger" type="button">{{ dict['eli_count'] }}</button></a>
                 {% endif %}
@@ -66,7 +66,7 @@
 
               <td>
                 {% if dict['improper_elb'] == 0 %}
-                  <button class="btn btn-mini btn-success" type="button">{{ dict['elb_count'] }}</button>
+                  <a href="/elbimproper/{{ dict['region'] }}"><button class="btn btn-mini btn-success" type="button">{{ dict['elb_count'] }}</button></a>
                 {% else %}
                   <a href="/elbimproper/{{ dict['region'] }}"><button class="btn btn-mini btn-danger" type="button">{{ dict['elb_count'] }}</button></a>
                 {% endif %}
@@ -74,9 +74,9 @@
 
               <td>
                 {% if dict['ip_low_subnet'] == 0 %}
-                  <button class="btn btn-mini btn-success" type="button">{{ dict['subnet_counter'] }}</button>
+                  <a href="/vpc/subnet/{{ dict['region'] }}"><button class="btn btn-mini btn-success" type="button">{{ dict['subnet_counter'] }}</button></a>
                 {% else %}
-                  <a href="/lowipsubnet/{{ dict['region'] }}"><button class="btn btn-mini btn-danger" type="button">{{ dict['subnet_counter'] }}</button></a>
+                  <a href="/vpc/subnet/{{ dict['region'] }}"><button class="btn btn-mini btn-danger" type="button">{{ dict['subnet_counter'] }}</button></a>
                 {% endif %}
               </td>
             </tr>

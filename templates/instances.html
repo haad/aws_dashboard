@@ -1,0 +1,120 @@
+<!doctype html>
+<html>
+<head>
+  {% include "head.html" ignore missing %}
+  <title>AWS Dashboard - Instances</title>
+</head>
+<body>
+  {% include "navbar.html" ignore missing %}
+
+  <div class="container-fluid">
+    <div class="row">
+    <div class="col-md-11 col-md-offset-1" align="center">
+      <h2><span class="label label-info">Instances</span></h2><br/>
+      <p>
+        <div>
+            Toggle column:
+            <a class="toggle-vis" data-column="1">Instance ID</a>
+            -
+            <a class="toggle-vis" data-column="2">Zone</a>
+            -
+            <a class="toggle-vis" data-column="3">VPC ID</a>
+            -
+            <a class="toggle-vis" data-column="4">Type</a>
+            -
+            <a class="toggle-vis" data-column="5">AMI id</a>
+            -
+            <a class="toggle-vis" data-column="6">State</a>
+            -
+            <a class="toggle-vis" data-column="7">DNS</a>
+            -
+            <a class="toggle-vis" data-column="8">Public IP</a>
+            -
+            <a class="toggle-vis" data-column="9">Private IP</a>
+            -
+            <a class="toggle-vis" data-column="10">Tags</a>
+        </div>
+        <table id="instances" class="table table-striped display">
+          <thead>
+            <tr style="font-weight:bold">
+              <td>Hostname</td>
+
+              <td>Instance ID</td>
+              <td>Zone</td>
+              <td>VPC ID</td>
+
+              <td>Type</td>
+              <td>AMI id</td>
+              <td>State</td>
+
+              <td>DNS</td>
+              <td>Public ip</td>
+              <td>Private ip</td>
+              <td>Tags</td>
+            </tr>
+          </thead>
+
+          <tfoot>
+            <tr style="font-weight:bold">
+              <td>Hostname</td>
+
+              <td>Instance ID</td>
+              <td>Zone</td>
+              <td>VPC ID</td>
+
+              <td>Type</td>
+              <td>AMI id</td>
+              <td>State</td>
+
+              <td>DNS</td>
+              <td>Public ip</td>
+              <td>Private ip</td>
+              <td>Tags</td>
+            </tr>
+          </tfoot>
+          {% for instance in instance_list %}
+          <tr>
+            <td>
+              {{ instance['instance_name'] }}
+            </td>
+
+            <td>
+              {{ instance['instance_id'] }}
+            </td>
+            <td>
+              {{ instance['instance_zone'] }}
+            </td>
+            <td>
+              {{ instance['instance_vpc'] }}
+            </td>
+
+            <td>
+              {{ instance['instance_type'] }}
+            </td>
+            <td>
+              {{ instance['instance_ami'] }}
+            </td>
+            <td>
+              {{ instance['instance_state'] }}
+            </td>
+
+            <td>
+              {{ instance['instance_dns_name'] }}
+            </td>
+            <td>
+              {{ instance['instance_public_ip'] }}
+            </td>
+            <td>
+              {{ instance['instance_private_ip'] }}
+            </td>
+            <td>
+              {{ instance['instance_tags'] }}
+            </td>
+          </tr>
+          {% endfor %}
+        </table>
+      </p>
+    </div>
+  </div>
+</body>
+</html>

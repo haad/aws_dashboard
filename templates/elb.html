@@ -6,15 +6,17 @@
 </head>
 <body>
   {% include "navbar.html" ignore missing %}
-
-  <div class="row">
+  <div class="container-fluid">
+    <div class="row">
     <div class="col-md-9 col-md-offset-1" align="center">
       <span class="label label-info">Improper ELBs</span></br>
       <p>
-        <table class="table table-striped" width=1000>
-          <tr style="font-weight:bold">
-            <td>Elastic LB</td><td>Instances</td><td>Health Check</td>
-          </tr>
+        <table class="table table-striped display" width=1000>
+          <thead>
+            <tr style="font-weight:bold">
+              <td>Elastic LB</td><td>Instances</td><td>Health Check</td>
+            </tr>
+          </thead>
           {% for elb in badelb %}
           <tr>
             <td>

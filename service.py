@@ -10,8 +10,6 @@ import boto.vpc
 import datetime
 from datetime import datetime, timedelta
 
-import cProfile
-
 app = Flask(__name__)
 
 class AWSDash(object):
@@ -62,6 +60,10 @@ class AWSDash(object):
             self.instances[region]['time'] = datetime.now()
         return self.instances[region]['res']
 
+    def get_instance_info(self, region, instance_id):
+        self.get_conn(region)
+        return self.conn.get_all_instances([instance_id])
+
     def get_ebs(self, region):
         if region not in self.ebs or self.get_time_diff(self.ebs[region]['time']) > self.timeout:
             self.get_conn(region)
@@ -94,6 +96,8 @@ class AWSDash(object):
             self.loadbs[region]['time'] = datetime.now()
         return self.loadbs[region]['res']
 
+def flatten_tags(tags):
+    return ', '.join("%s=%r" % (key,str(val)) for (key,val) in tags.iteritems())
 
 creds = config.get_ec2_conf()
 aws = AWSDash(creds['AWS_ACCESS_KEY_ID'], creds['AWS_SECRET_ACCESS_KEY'])
@@ -159,9 +163,9 @@ def ebs_volumes(region=None):
     ebs_vol = []
     for vol in ebs:
         state = vol.attachment_state()
-        if state == None:
-            ebs_info = { 'id' : vol.id, 'size' : vol.size, 'iops' : vol.iops, 'status' : vol.status, 'create_time' : vol.create_time , 'tags' : vol.tags}
-            ebs_vol.append(ebs_info)
+        ebs_info = { 'id' : vol.id, 'size' : vol.size, 'iops' : vol.iops, 'status' : vol.status,
+        'create_time' : vol.create_time , 'tags' : flatten_tags(vol.tags)}
+        ebs_vol.append(ebs_info)
     return render_template('ebs_volume.html', ebs_vol=ebs_vol, region=region)
 
 
@@ -178,7 +182,7 @@ def delete_ebs_vol(region=None, vol_id=None):
 
 @app.route('/elastic_ips/<region>/')
 def elastic_ips(region=None):
-    elis = aws.get_adresses(region)
+    elis = aws.get_addresses(region)
     un_eli = []
     for eli in elis:
         instance_id = eli.instance_id
@@ -206,11 +210,34 @@ def instance_events(region=None):
     instance_event_list = []
     for instance in instances:
         event = instance.events
-        if event and "Completed" not in instance.events[0].description:
-            instance_name = conn.get_all_instances([instance.id])
-            event_info = { 'instance_id' : instance.id, 'instance_name' : instance_name[0].instances[0].tags['Name'], 'event' : instance.events[0].code, 'description' : instance.events[0].description, 'event_before' : instance.events[0].not_before, 'event_after': instance.events[0].not_after }
+        if event:
+            instance_name = aws.get_instance_info([instance.id])
+            event_info = { 'instance_id' : instance.id, 'instance_name' : instance_name[0].instances[0].tags['Name'],
+            'event' : instance.events[0].code, 'description' : instance.events[0].description,
+            'event_before' : instance.events[0].not_before, 'event_after': instance.events[0].not_after }
             instance_event_list.append(event_info)
     return render_template('instance_events.html', instance_event_list=instance_event_list)
+
+@app.route('/instances/<region>/')
+def instances(region=None):
+    instances = aws.get_instances(region)
+    instance_list = []
+    for instance in instances:
+        instance_name = aws.get_instance_info(region, instance.id)
+        instance_info = {
+            'instance_id': instance.id,
+            'instance_state': instance.state_name,
+            'instance_zone': instance.zone,
+            'instance_name': instance_name[0].instances[0].tags['Name'],
+            'instance_type': instance_name[0].instances[0].instance_type,
+            'instance_ami': instance_name[0].instances[0].image_id,
+            'instance_private_ip': instance_name[0].instances[0].private_ip_address,
+            'instance_public_ip': instance_name[0].instances[0].ip_address,
+            'instance_dns_name': instance_name[0].instances[0].dns_name,
+            'instance_vpc': instance_name[0].instances[0].vpc_id,
+            'instance_tags': flatten_tags(instance_name[0].instances[0].tags)}
+        instance_list.append(instance_info)
+    return render_template('instances.html', instance_list=instance_list)
 
 
 @app.route('/elbimproper/<region>/')
@@ -218,21 +245,22 @@ def elbimproper(region=None):
     elbs = aws.get_loadbalancers(region)
     badelb = []
     for elb in elbs:
-        if len(elb.instances) < 1:
-            elb_info = {'elb_name': elb.dns_name, 'elb_attached_instances': elb.instances, 'elb_healthcheck': elb.health_check}
-            badelb.append(elb_info)
+        elb_info = {'elb_name': elb.dns_name, 'elb_attached_instances': elb.instances,
+        'elb_healthcheck': elb.health_check}
+        badelb.append(elb_info)
     return render_template('elb.html', badelb=badelb)
 
 
-@app.route('/lowipsubnet/<region>/')
-def lowipsubnet(region=None):
+@app.route('/vpc/subnet/<region>/')
+def subnet(region=None):
     subnets = aws.get_subnets(region)
-    lowsubnet = []
+    vpc_subnets = []
     for subnet in subnets:
-        if subnet.available_ip_address_count < 15:
-            subnet_info = {'subnet_id': subnet.id, 'subnet_cidr': subnet.cidr_block, 'subnet_az': subnet.availability_zone, 'subnet_avail_ip': subnet.available_ip_address_count, 'subnet_tags': subnet.tags}
-            lowsubnet.append(subnet_info)
-    return render_template('subnet.html', lowsubnet=lowsubnet)
+        subnet_info = {'subnet_id': subnet.id, 'subnet_vpc': subnet.vpc_id, 'subnet_state': subnet.state,
+        'subnet_cidr': subnet.cidr_block, 'subnet_az': subnet.availability_zone,
+        'subnet_avail_ip': subnet.available_ip_address_count, 'subnet_tags': flatten_tags(subnet.tags)}
+        vpc_subnets.append(subnet_info)
+    return render_template('subnet.html', vpc_subnets=vpc_subnets)
 
 
 if __name__ == '__main__':

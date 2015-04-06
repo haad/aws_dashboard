@@ -7,30 +7,49 @@
 <body>
   {% include "navbar.html" ignore missing %}
 
-  <div class="row">
+  <div class="container-fluid">
+    <div class="row">
     <div class="scol-md-9 col-md-offset-1" align="center">
-       <span class="label label-info">Instance Events</span></br>
+       <h2><span class="label label-info">VPC Subnets</span></h2><br/>
        <p>
-        <table class="table table-striped">
-          <tr style="font-weight:bold">
-            <td>Subnet ID</td><td>CIDR Block</td><td>Availability Zone</td><td>Free IPs</td><td>Tags</td>
-          </tr>
-          {% for subnet in lowsubnet %}
+        <table class="table table-striped display">
+          <thead>
+            <tr style="font-weight:bold">
+              <td>Subnet ID</td>
+              <td>Subnet VPC ID</td>
+              <td>CIDR Block</td>
+              <td>Availability Zone</td>
+              <td>Free IPs</td>
+              <td>State</td>
+              <td>Tags</td>
+            </tr>
+          </thead>
+          {% for subnet in vpc_subnets %}
           <tr>
             <td>
-              {{subnet['subnet_id']}}
+              {{ subnet['subnet_id'] }}
             </td>
             <td>
-              {{subnet['subnet_cidr']}}
+              {{ subnet['subnet_vpc'] }}
             </td>
             <td>
-              {{subnet['subnet_az']}}
+              {{ subnet['subnet_cidr'] }}
             </td>
             <td>
-              {{subnet['subnet_avail_ip']}}
+              {{ subnet['subnet_az'] }}
             </td>
             <td>
-              {{subnet['subnet_tags']}}
+              {% if subnet['subnet_avail_ip'] < 15 %}
+                <span class="label label-danger">{{ subnet['subnet_avail_ip'] }}</span>
+              {% else %}
+                {{ subnet['subnet_avail_ip'] }}
+              {% endif %}
+            </td>
+            <td>
+              {{ subnet['subnet_state'] }}
+            </td>
+            <td>
+              {{ subnet['subnet_tags'] }}
             </td>
           </tr>
           {% endfor %}
