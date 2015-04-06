@@ -21,3 +21,11 @@ def listen_port():
 def listen_host():
     host = 'localhost'
     return host
+
+def redis_host():
+    redis_host = 'localhost'
+    return redis_host
+
+def redis_port():
+    redis_port = 6379
+    return redis_port

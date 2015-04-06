@@ -9,12 +9,14 @@ from boto.ec2 import *
 import boto.vpc
 import datetime
 from datetime import datetime, timedelta
+import redis
+import pickle
 
 app = Flask(__name__)
 
 class AWSDash(object):
     """Helper methods for AWS access"""
-    def __init__(self, aws_key, aws_secret):
+    def __init__(self, aws_key, aws_secret, redis_host=None, redis_port=None):
         super(AWSDash, self).__init__()
         self.aws_key = aws_key
         self.aws_secret = aws_secret
@@ -22,15 +24,11 @@ class AWSDash(object):
         self.conn = None
         self.vpcconn = None
         self.elbconn = None
-        self.zones = {}
-        self.instances = {}
-        self.ebs = {}
-        self.subnets = {}
-        self.loadbs = {}
-        self.addrs = {}
 
-    def get_time_diff(self, start_time):
-        (start_time - datetime.now()).total_seconds()
+        if redis_host and redis_port:
+            self.redis = redis.StrictRedis(host=redis_host, port=redis_port, db=0)
+        else:
+            exit("Redis cache server not configured.")
 
     def get_conn(self, region):
         self.conn = connect_to_region(region, aws_access_key_id=self.aws_key,
@@ -45,62 +43,85 @@ class AWSDash(object):
             aws_secret_access_key=self.aws_secret)
 
     def get_zones(self, region):
-        if region not in self.zones or self.get_time_diff(self.zones[region]['time']) > self.timeout:
+        key = "zones/%s" % region
+        if not self.redis.exists(key):
             self.get_conn(region)
-            self.zones[region] = {}
-            self.zones[region]['res'] = self.conn.get_all_zones()
-            self.zones[region]['time'] = datetime.now()
-        return self.zones[region]['res']
+            self.redis.set(key, pickle.dumps(self.conn.get_all_zones()))
+            self.redis.expire(key, self.timeout)
+
+        return pickle.loads(self.redis.get(key))
 
     def get_instances(self, region):
-        if region not in self.instances or self.get_time_diff(self.instances[region]['time']) > self.timeout:
+        key = "instances/%s" % region
+        if not self.redis.exists(key):
             self.get_conn(region)
-            self.instances[region] = {}
-            self.instances[region]['res'] = self.conn.get_all_instance_status(max_results=2000)
-            self.instances[region]['time'] = datetime.now()
-        return self.instances[region]['res']
+            self.redis.set(key, pickle.dumps(self.conn.get_all_instance_status(max_results=2000)))
+            self.redis.expire(key, self.timeout)
+
+        return pickle.loads(self.redis.get(key))
 
     def get_instance_info(self, region, instance_id):
-        self.get_conn(region)
-        return self.conn.get_all_instances([instance_id])
+        key = "instance/%s/%s" % (region, instance_id)
+        if not self.redis.exists(key):
+            self.get_conn(region)
+            instance = self.conn.get_all_instances([instance_id])[0].instances[0]
+
+            inst = {
+                'instance_name': instance.tags['Name'],
+                'instance_type': instance.instance_type,
+                'instance_ami': instance.image_id,
+                'instance_private_ip': instance.private_ip_address,
+                'instance_public_ip': instance.ip_address,
+                'instance_dns_name': instance.dns_name,
+                'instance_vpc': instance.vpc_id,
+                'instance_tags': flatten_tags(instance.tags)
+            }
+            self.redis.set(key, pickle.dumps(inst))
+            self.redis.expire(key, self.timeout)
+
+        return pickle.loads(self.redis.get(key))
 
     def get_ebs(self, region):
-        if region not in self.ebs or self.get_time_diff(self.ebs[region]['time']) > self.timeout:
+        key = "ebs/%s" % region
+        if not self.redis.exists(key):
             self.get_conn(region)
-            self.ebs[region] = {}
-            self.ebs[region]['res'] = self.conn.get_all_volumes()
-            self.ebs[region]['time'] = datetime.now()
-        return self.ebs[region]['res']
+            self.redis.set(key, pickle.dumps(self.conn.get_all_volumes()))
+            self.redis.expire(key, self.timeout)
+
+        return pickle.loads(self.redis.get(key))
 
     def get_addresses(self, region):
-        if region not in self.addrs or self.get_time_diff(self.addrs[region]['time']) > self.timeout:
+        key = "addrs/%s" % region
+        if not self.redis.exists(key):
             self.get_conn(region)
-            self.addrs[region] = {}
-            self.addrs[region]['res'] = self.conn.get_all_addresses()
-            self.addrs[region]['time'] = datetime.now()
-        return self.addrs[region]['res']
+            self.redis.set(key, pickle.dumps(self.conn.get_all_addresses()))
+            self.redis.expire(key, self.timeout)
+
+        return pickle.loads(self.redis.get(key))
 
     def get_subnets(self, region):
-        if region not in self.subnets or self.get_time_diff(self.subnets[region]['time']) > self.timeout:
+        key = "subnets/%s" % region
+        if not self.redis.exists(key):
             self.get_vpc_conn(region)
-            self.subnets[region] = {}
-            self.subnets[region]['res'] = self.vpcconn.get_all_subnets()
-            self.subnets[region]['time'] = datetime.now()
-        return self.subnets[region]['res']
+            self.redis.set(key, pickle.dumps(self.vpcconn.get_all_subnets()))
+            self.redis.expire(key, self.timeout)
+
+        return pickle.loads(self.redis.get(key))
 
     def get_loadbalancers(self, region):
-        if region not in self.loadbs or self.get_time_diff(self.loadbs[region]['time']) > self.timeout:
+        key = "elb/%s" % region
+        if not self.redis.exists(key):
             self.get_elb_conn(region)
-            self.loadbs[region] = {}
-            self.loadbs[region]['res'] = self.elbconn.get_all_load_balancers()
-            self.loadbs[region]['time'] = datetime.now()
-        return self.loadbs[region]['res']
+            self.redis.set(key, pickle.dumps(self.elbconn.get_all_load_balancers()))
+            self.redis.expire(key, self.timeout)
+
+        return pickle.loads(self.redis.get(key))
 
 def flatten_tags(tags):
     return ', '.join("%s=%r" % (key,str(val)) for (key,val) in tags.iteritems())
 
-creds = config.get_ec2_conf()
-aws = AWSDash(creds['AWS_ACCESS_KEY_ID'], creds['AWS_SECRET_ACCESS_KEY'])
+creds = config.ec2_conf()
+aws = AWSDash(creds['AWS_ACCESS_KEY_ID'], creds['AWS_SECRET_ACCESS_KEY'], config.redis_host(), config.redis_port())
 
 @app.route('/')
 def index():
@@ -223,20 +244,21 @@ def instances(region=None):
     instance_list = []
     for instance in instances:
         #start = datetime.now()
-        instance_name = aws.get_instance_info(region, instance.id)
+        inst = aws.get_instance_info(region, instance.id)
         #print (datetime.now()-start).seconds
         instance_info = {
             'instance_id': instance.id,
             'instance_state': instance.state_name,
             'instance_zone': instance.zone,
-            'instance_name': instance_name[0].instances[0].tags['Name'],
-            'instance_type': instance_name[0].instances[0].instance_type,
-            'instance_ami': instance_name[0].instances[0].image_id,
-            'instance_private_ip': instance_name[0].instances[0].private_ip_address,
-            'instance_public_ip': instance_name[0].instances[0].ip_address,
-            'instance_dns_name': instance_name[0].instances[0].dns_name,
-            'instance_vpc': instance_name[0].instances[0].vpc_id,
-            'instance_tags': flatten_tags(instance_name[0].instances[0].tags)}
+            'instance_name': inst['instance_name'],
+            'instance_type': inst['instance_type'],
+            'instance_ami': inst['instance_ami'],
+            'instance_private_ip': inst['instance_private_ip'],
+            'instance_public_ip': inst['instance_public_ip'],
+            'instance_dns_name': inst['instance_dns_name'],
+            'instance_vpc': inst['instance_vpc'],
+            'instance_tags': inst['instance_tags']
+        }
         instance_list.append(instance_info)
     return render_template('instances.html', instance_list=instance_list)
 
