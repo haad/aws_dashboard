@@ -107,8 +107,6 @@ def index():
     list = []
 
     for region in config.region_list():
-        start = datetime.now()
-
         zones = aws.get_zones(region)
         instances = aws.get_instances(region)
         ebs = aws.get_ebs(region)
@@ -153,7 +151,6 @@ def index():
             'unattached_ebs' : unattached_ebs, 'eli_count' : len(elis), 'unattached_eli' : unattached_eli,
             'elb_count' : len(elbs), 'event_count' : event_count, 'improper_elb': improperelb,
             'subnet_counter': len(subnets), 'ip_low_subnet': ip_low_subnet})
-        print (datetime.now()-start).seconds
     return render_template('index.html', list=list)
 
 
@@ -163,8 +160,9 @@ def ebs_volumes(region=None):
     ebs_vol = []
     for vol in ebs:
         state = vol.attachment_state()
-        ebs_info = { 'id' : vol.id, 'size' : vol.size, 'iops' : vol.iops, 'status' : vol.status,
-        'create_time' : vol.create_time , 'tags' : flatten_tags(vol.tags)}
+        ebs_info = { 'id': vol.id, 'size': vol.size, 'iops': vol.iops, 'status': vol.status,
+        'create_time': vol.create_time , 'tags': flatten_tags(vol.tags), 'type': vol.type,
+        'snapshot_id': vol.snapshot_id, 'vol_state': state}
         ebs_vol.append(ebs_info)
     return render_template('ebs_volume.html', ebs_vol=ebs_vol, region=region)
 
@@ -218,12 +216,15 @@ def instance_events(region=None):
             instance_event_list.append(event_info)
     return render_template('instance_events.html', instance_event_list=instance_event_list)
 
+
 @app.route('/instances/<region>/')
 def instances(region=None):
     instances = aws.get_instances(region)
     instance_list = []
     for instance in instances:
+        #start = datetime.now()
         instance_name = aws.get_instance_info(region, instance.id)
+        #print (datetime.now()-start).seconds
         instance_info = {
             'instance_id': instance.id,
             'instance_state': instance.state_name,

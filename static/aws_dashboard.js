@@ -12,6 +12,6 @@ $(document).ready(function() {
     } );
 } );
 
-//$(document).ready(function() {
-//    $('table.display').dataTable();
-//} );
+$(document).ready(function() {
+    $('table.display').dataTable();
+} );

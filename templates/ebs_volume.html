@@ -17,8 +17,12 @@
           <tr style="font-weight:bold">
             <td>EBS Volume ID</td>
             <td>Size</td>
+            <td>Type</td>
             <td>IOPs</td>
+
             <td>Status</td>
+            <td>Current State</td>
+
             <td>Create Time</td>
             <td>Tags</td>
             <td>Delete</td>
@@ -33,10 +37,16 @@
             {{vol['size']}}G
           </td>
           <td>
+            {{vol['type']}}
+          </td>
+          <td>
             {{vol['iops']}}
           </td>
           <td>
             {{vol['status']}}
+          </td>
+          <td>
+            {{vol['vol_state']}}
           </td>
           <td>
             {{vol['create_time']}}
