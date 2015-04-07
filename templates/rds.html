@@ -21,6 +21,7 @@
               <td>RDS Storage</td>
               <td>RDS Endpoint</td>
               <td>RDS User</td>
+              <td>RDS Sec Group</td>
               <td>RDS Last Backup</td>
               <td>RDS Availability Zone</td>
               <td>RDS Multi AZ</td>
@@ -45,6 +46,13 @@
             </td>
             <td>
               {{ db['rds_user'] }}
+            </td>
+            <td>
+              {% if db['rds_sg'] %}
+                <a href="/ec2/sec_groups/{{ db['rds_region'] }}/{{ db['rds_sg'] }}">{{ db['rds_sg'] }}</a>
+              {% else %}
+                {{ db['rds_sg'] }}
+              {% endif %}
             </td>
             <td>
               {{ db['rds_last_backup'] }}

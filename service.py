@@ -58,6 +58,7 @@ class AWSDash(object):
 
         return pickle.loads(self.redis.get(key))
 
+    ## TODO: Unpack values from SG object and add them to redis as strings.
     def get_sec_groups(self, region, group_id):
         if group_id:
             group_ids = [group_id]
@@ -164,6 +165,12 @@ def clean_up_sg_rules(rules):
         a.append(str(rule).replace('IPPermissions:', ""))
     return a
 
+def get_sg_from_rds(sg):
+    if sg:
+        return str(sg).split(':')[1].strip(']')
+    else:
+        return None
+
 creds = config.ec2_conf()
 aws = AWSDash(creds['AWS_ACCESS_KEY_ID'], creds['AWS_SECRET_ACCESS_KEY'], config.redis_host(), config.redis_port())
 
@@ -177,6 +184,7 @@ def index():
         ebs = aws.get_ebs(region)
         subnets = aws.get_subnets(region)
         vpcs = aws.get_vpcs(region)
+        rds = aws.get_rds(region)
 
         unattached_ebs = 0
         unattached_eli = 0
@@ -216,7 +224,7 @@ def index():
         list.append({ 'region' : region, 'zones': zones, 'instance_count' : len(instances), 'ebscount' : len(ebs),
             'unattached_ebs' : unattached_ebs, 'eli_count' : len(elis), 'unattached_eli' : unattached_eli,
             'elb_count' : len(elbs), 'event_count' : event_count, 'improper_elb': improperelb,
-            'subnet_counter': len(subnets), 'ip_low_subnet': ip_low_subnet, 'vpc_count': len(vpcs)})
+            'subnet_counter': len(subnets), 'ip_low_subnet': ip_low_subnet, 'vpc_count': len(vpcs), 'rds_counter': len(rds)})
     return render_template('index.html', list=list)
 
 
@@ -361,6 +369,7 @@ def rds_list(region=None):
     rds_list = []
     for db in rds:
         rds_info = {
+            'rds_region': region,
             'rds_id': db.id,
             'rds_engine': db.engine,
             'rds_status': db.status,
@@ -369,7 +378,8 @@ def rds_list(region=None):
             'rds_user': db.master_username,
             'rds_last_backup': db.latest_restorable_time,
             'rds_az': db.availability_zone,
-            'rds_multi_az': db.multi_az
+            'rds_multi_az': db.multi_az,
+            'rds_sg': get_sg_from_rds(db.vpc_security_groups)
         }
         rds_list.append(rds_info)
     return render_template('rds.html', rds=rds_list)
