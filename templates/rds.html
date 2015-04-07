@@ -1,0 +1,65 @@
+<!doctype html>
+<html>
+<head>
+  {% include "head.html" ignore missing %}
+  <title>AWS Dashboard - RDS Instances</title>
+</head>
+<body>
+  {% include "navbar.html" ignore missing %}
+
+  <div class="container-fluid">
+    <div class="row">
+    <div class="scol-md-9 col-md-offset-1" align="center">
+       <h2><span class="label label-info">RDS Instances</span></h2><br/>
+       <p>
+        <table class="table table-striped display">
+          <thead>
+            <tr style="font-weight:bold">
+              <td>RDS ID</td>
+              <td>RDS Status</td>
+              <td>RDS Engine</td>
+              <td>RDS Storage</td>
+              <td>RDS Endpoint</td>
+              <td>RDS User</td>
+              <td>RDS Last Backup</td>
+              <td>RDS Availability Zone</td>
+              <td>RDS Multi AZ</td>
+            </tr>
+          </thead>
+          {% for db in rds %}
+          <tr>
+            <td>
+              {{ db['rds_id'] }}
+            </td>
+            <td>
+              {{ db['rds_status'] }}
+            </td>
+            <td>
+              {{ db['rds_engine'] }}
+            </td>
+            <td>
+              {{ db['rds_storage'] }}
+            </td>
+            <td>
+              {{ db['rds_endpoint'] }}
+            </td>
+            <td>
+              {{ db['rds_user'] }}
+            </td>
+            <td>
+              {{ db['rds_last_backup'] }}
+            </td>
+            <td>
+              {{ db['rds_az'] }}
+            </td>
+            <td>
+              {{ db['rds_multi_az'] }}
+            </td>
+          </tr>
+          {% endfor %}
+        </table>
+       </p>
+    </div>
+  </div>
+</body>
+</html>

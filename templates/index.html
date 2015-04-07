@@ -42,6 +42,7 @@
                 <td>Elastic LBs</td>
                 <td>VPCs</td>
                 <td>Subnet IPs</td>
+                <td>RDS</td>
               </tr>
             </thead>
             <tr>
@@ -90,6 +91,10 @@
                 {% else %}
                   <a href="/vpc/subnet/{{ dict['region'] }}"><button class="btn btn-danger" type="button">{{ dict['subnet_counter'] }}</button></a>
                 {% endif %}
+              </td>
+
+              <td>
+                  <a href="/rds/list/{{ dict['region'] }}"><button class="btn btn-success" type="button">{{ dict['subnet_counter'] }}</button></a>
               </td>
             </tr>
           </table>

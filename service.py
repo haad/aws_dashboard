@@ -7,10 +7,12 @@ import boto.ec2.elb
 import boto
 from boto.ec2 import *
 import boto.vpc
+import boto.rds
 import datetime
 from datetime import datetime, timedelta
 import redis
 import pickle
+import ast
 
 app = Flask(__name__)
 
@@ -24,6 +26,7 @@ class AWSDash(object):
         self.conn = None
         self.vpcconn = None
         self.elbconn = None
+        self.rdsconn = None
 
         if redis_host and redis_port:
             self.redis = redis.StrictRedis(host=redis_host, port=redis_port, db=0)
@@ -42,6 +45,10 @@ class AWSDash(object):
         self.elbconn = boto.ec2.elb.connect_to_region(region, aws_access_key_id=self.aws_key,
             aws_secret_access_key=self.aws_secret)
 
+    def get_rds_conn(self, region):
+        self.rdsconn = boto.rds.connect_to_region(region, aws_access_key_id=self.aws_key,
+            aws_secret_access_key=self.aws_secret)
+
     def get_zones(self, region):
         key = "zones/%s" % region
         if not self.redis.exists(key):
@@ -50,6 +57,15 @@ class AWSDash(object):
             self.redis.expire(key, self.timeout)
 
         return pickle.loads(self.redis.get(key))
+
+    def get_sec_groups(self, region, group_id):
+        if group_id:
+            group_ids = [group_id]
+        else:
+            group_ids = None
+
+        self.get_conn(region)
+        return self.conn.get_all_security_groups(group_ids=group_ids)
 
     def get_instances(self, region):
         key = "instances/%s" % region
@@ -65,7 +81,6 @@ class AWSDash(object):
         if not self.redis.exists(key):
             self.get_conn(region)
             instance = self.conn.get_all_instances([instance_id])[0].instances[0]
-
             inst = {
                 'instance_name': instance.tags['Name'],
                 'instance_type': instance.instance_type,
@@ -74,6 +89,8 @@ class AWSDash(object):
                 'instance_public_ip': instance.ip_address,
                 'instance_dns_name': instance.dns_name,
                 'instance_vpc': instance.vpc_id,
+                'instance_sg': instance.groups[0].id,
+                'instance_key': instance.key_name,
                 'instance_tags': flatten_tags(instance.tags)
             }
             self.redis.set(key, pickle.dumps(inst))
@@ -126,8 +143,26 @@ class AWSDash(object):
 
         return pickle.loads(self.redis.get(key))
 
+    def get_rds(self, region):
+        key = "rds/%s" % region
+        if not self.redis.exists(key):
+            self.get_rds_conn(region)
+            self.redis.set(key, pickle.dumps(self.rdsconn.get_all_dbinstances()))
+            self.redis.expire(key, self.timeout)
+
+        return pickle.loads(self.redis.get(key))
+
 def flatten_tags(tags):
     return ', '.join("%s=%r" % (key,str(val)) for (key,val) in tags.iteritems())
+
+def parse_endpoint(endpoint):
+    return "mysql://%s:%d" % (str(endpoint[0]), endpoint[1])
+
+def clean_up_sg_rules(rules):
+    a = []
+    for rule in rules:
+        a.append(str(rule).replace('IPPermissions:', ""))
+    return a
 
 creds = config.ec2_conf()
 aws = AWSDash(creds['AWS_ACCESS_KEY_ID'], creds['AWS_SECRET_ACCESS_KEY'], config.redis_host(), config.redis_port())
@@ -238,10 +273,25 @@ def instance_events(region=None):
             instance_event_list.append(event_info)
     return render_template('instance_events.html', instance_event_list=instance_event_list)
 
+@app.route('/ec2/sec_groups/<region>/<group_id>')
+def security_groups(region=None, group_id=None):
+    sgs = aws.get_sec_groups(region, group_id)
+    sg_list = []
+    for sg in sgs:
+        sg_info ={
+            'sg_name': sg.name,
+            'sg_id': sg.id,
+            'sg_desc': sg.description,
+            'sg_vpc': sg.vpc_id,
+            'sg_region': sg.region,
+            'sg_rules': clean_up_sg_rules(sg.rules)
+        }
+        sg_list.append(sg_info)
+    return render_template('sg_info.html', sg_list=sg_list)
 
 @app.route('/ec2/instances/<region>/<vpcid>')
 @app.route('/ec2/instances/<region>/', defaults={'vpcid': None})
-def instances(region=None, vpcid=None):
+def instances_list(region=None, vpcid=None):
     instances = aws.get_instances(region)
     instance_list = []
     for instance in instances:
@@ -252,6 +302,7 @@ def instances(region=None, vpcid=None):
             continue
 
         instance_info = {
+            'instance_region': region,
             'instance_id': instance.id,
             'instance_state': instance.state_name,
             'instance_zone': instance.zone,
@@ -262,6 +313,8 @@ def instances(region=None, vpcid=None):
             'instance_public_ip': inst['instance_public_ip'],
             'instance_dns_name': inst['instance_dns_name'],
             'instance_vpc': inst['instance_vpc'],
+            'instance_sg': inst['instance_sg'],
+            'instance_key': inst['instance_key'],
             'instance_tags': inst['instance_tags']
         }
         instance_list.append(instance_info)
@@ -288,7 +341,7 @@ def subnet_info(region=None, vpcid=None):
 
 
 @app.route('/vpc/list/<region>/')
-def list(region=None):
+def vpc_list(region=None):
     vpcs = aws.get_vpcs(region)
     vpc_list = []
     for vpc in vpcs:
@@ -301,6 +354,26 @@ def list(region=None):
         }
         vpc_list.append(vpc_info)
     return render_template('vpcs.html', vpcs=vpc_list)
+
+@app.route('/rds/list/<region>')
+def rds_list(region=None):
+    rds = aws.get_rds(region)
+    rds_list = []
+    for db in rds:
+        rds_info = {
+            'rds_id': db.id,
+            'rds_engine': db.engine,
+            'rds_status': db.status,
+            'rds_storage': db.allocated_storage,
+            'rds_endpoint': parse_endpoint(db.endpoint),
+            'rds_user': db.master_username,
+            'rds_last_backup': db.latest_restorable_time,
+            'rds_az': db.availability_zone,
+            'rds_multi_az': db.multi_az
+        }
+        rds_list.append(rds_info)
+    return render_template('rds.html', rds=rds_list)
+
 
 if __name__ == '__main__':
     app.debug = config.app_debug()

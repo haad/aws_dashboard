@@ -1,0 +1,49 @@
+<!doctype html>
+<html>
+<head>
+  {% include "head.html" ignore missing %}
+  <title>AWS Dashboard - Security Group Info</title>
+</head>
+<body>
+  {% include "navbar.html" ignore missing %}
+
+  <div class="container-fluid">
+    <div class="row">
+    <div class="scol-md-9 col-md-offset-1" align="center">
+       <h2><span class="label label-info">Security Group Info</span></h2><br/>
+       <p>
+        <table class="table table-striped display">
+          <thead>
+            <tr style="font-weight:bold">
+              <td>SG Name</td>
+              <td>SG Desc</td>
+              <td>SG VPC</td>
+              <td>SG Region</td>
+              <td>SG rules</td>
+            </tr>
+          </thead>
+          {% for sg in sg_list %}
+          <tr>
+            <td>
+              {{ sg['sg_name'] }}
+            </td>
+            <td>
+              {{ sg['sg_desc'] }}
+            </td>
+            <td>
+              {{ sg['sg_vpc'] }}
+            </td>
+            <td>
+              {{ sg['sg_region'] }}
+            </td>
+            <td>
+              Allow {{ sg['sg_rules'] }}
+            </td>
+          </tr>
+          {% endfor %}
+        </table>
+       </p>
+    </div>
+  </div>
+</body>
+</html>

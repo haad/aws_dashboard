@@ -2,7 +2,9 @@
 
 Amazon Web Services Dashboard
 
-Forked from https://github.com/haad/aws_dashboard
+Fork me at: https://github.com/haad/aws_dashboard
+
+For application version see VERSION file.
 
 ## Ability
 
@@ -11,6 +13,7 @@ Forked from https://github.com/haad/aws_dashboard
 * Unused EIPs
 * ELBs with only 1 instance attached
 * Show VPC subnets
+* Show VPCs
 
 ## Configure
 

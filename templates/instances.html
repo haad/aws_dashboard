@@ -26,13 +26,17 @@
             -
             <a class="toggle-vis" data-column="6">State</a>
             -
-            <a class="toggle-vis" data-column="7">DNS</a>
+            <a class="toggle-vis" data-column="7">Sec Group</a>
             -
-            <a class="toggle-vis" data-column="8">Public IP</a>
+            <a class="toggle-vis" data-column="8">Key</a>
             -
-            <a class="toggle-vis" data-column="9">Private IP</a>
+            <a class="toggle-vis" data-column="9">DNS</a>
             -
-            <a class="toggle-vis" data-column="10">Tags</a>
+            <a class="toggle-vis" data-column="10">Public IP</a>
+            -
+            <a class="toggle-vis" data-column="11">Private IP</a>
+            -
+            <a class="toggle-vis" data-column="12">Tags</a>
         </div>
         <table id="instances" class="table table-striped display">
           <thead>
@@ -46,6 +50,8 @@
               <td>Type</td>
               <td>AMI id</td>
               <td>State</td>
+              <td>Sec Group</td>
+              <td>Key</td>
 
               <td>DNS</td>
               <td>Public ip</td>
@@ -65,6 +71,8 @@
               <td>Type</td>
               <td>AMI id</td>
               <td>State</td>
+              <td>Sec Group</td>
+              <td>Key</td>
 
               <td>DNS</td>
               <td>Public ip</td>
@@ -97,6 +105,13 @@
             <td>
               {{ instance['instance_state'] }}
             </td>
+            <td>
+              <a href="/ec2/sec_groups/{{ instance['instance_region'] }}/{{ instance['instance_sg'] }}">{{ instance['instance_sg'] }}</a>
+            </td>
+            <td>
+              {{ instance['instance_key'] }}
+            </td>
+
 
             <td>
               {{ instance['instance_dns_name'] }}
