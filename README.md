@@ -15,3 +15,8 @@ Forked from https://github.com/haad/aws_dashboard
 ## Configure
 
 AWS dashboard requires redis server, which is used as a cache for boto requests.
+
+## Todo
+
+1) Add RDS support
+2) Instance security groups

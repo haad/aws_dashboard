@@ -25,7 +25,6 @@
 
             <td>Create Time</td>
             <td>Tags</td>
-            <td>Delete</td>
           </tr>
         </thead>
         {% for vol in ebs_vol %}
@@ -53,9 +52,6 @@
           </td>
           <td>
             {{vol['tags']}}
-          </td>
-          <td>
-            <a href="/ebs_volumes/{{region}}/delete/{{vol['id']}}"><button class="btn btn-danger btn-mini" type="button">Delete</button></a>
           </td>
         </tr>
         {% endfor %}

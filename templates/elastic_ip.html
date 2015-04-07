@@ -15,7 +15,8 @@
         <table class="table table-striped display">
           <thead>
             <tr style="font-weight:bold">
-              <td>Elastic IP</td><td>Domain</td><td>Delete</td>
+              <td>Elastic IP</td>
+              <td>Domain</td>
             </tr>
           </thead>
           {% for eli in un_eli %}
@@ -25,9 +26,6 @@
             </td>
             <td>
               {{eli['domain']}}
-            </td>
-            <td>
-              <a href="/elastic_ips/{{region}}/delete/{{eli['public_ip']}}"><button class="btn btn-danger btn-mini" type="button">Delete</button></a>
             </td>
           </tr>
           {% endfor %}

@@ -17,7 +17,7 @@
               <td>Elastic LB</td><td>Instances</td><td>Health Check</td>
             </tr>
           </thead>
-          {% for elb in badelb %}
+          {% for elb in elb_list %}
           <tr>
             <td>
               {{elb['elb_name']}}

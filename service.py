@@ -20,7 +20,7 @@ class AWSDash(object):
         super(AWSDash, self).__init__()
         self.aws_key = aws_key
         self.aws_secret = aws_secret
-        self.timeout = 300
+        self.timeout = 3000
         self.conn = None
         self.vpcconn = None
         self.elbconn = None
@@ -99,14 +99,23 @@ class AWSDash(object):
 
         return pickle.loads(self.redis.get(key))
 
-    def get_subnets(self, region):
-        key = "subnets/%s" % region
+    def get_subnets(self, region, vpcid=None):
+        if vpcid:
+            key = "subnets/%s/%s" % (region, vpcid)
+            filter = {'vpcId': [vpcid]}
+        else:
+            key = "subnets/%s" % region
+            filter = None
         if not self.redis.exists(key):
             self.get_vpc_conn(region)
-            self.redis.set(key, pickle.dumps(self.vpcconn.get_all_subnets()))
+            self.redis.set(key, pickle.dumps(self.vpcconn.get_all_subnets(filters=filter)))
             self.redis.expire(key, self.timeout)
 
         return pickle.loads(self.redis.get(key))
+
+    def get_vpcs(self, region):
+        self.get_vpc_conn(region)
+        return self.vpcconn.get_all_vpcs()
 
     def get_loadbalancers(self, region):
         key = "elb/%s" % region
@@ -132,6 +141,7 @@ def index():
         instances = aws.get_instances(region)
         ebs = aws.get_ebs(region)
         subnets = aws.get_subnets(region)
+        vpcs = aws.get_vpcs(region)
 
         unattached_ebs = 0
         unattached_eli = 0
@@ -171,11 +181,11 @@ def index():
         list.append({ 'region' : region, 'zones': zones, 'instance_count' : len(instances), 'ebscount' : len(ebs),
             'unattached_ebs' : unattached_ebs, 'eli_count' : len(elis), 'unattached_eli' : unattached_eli,
             'elb_count' : len(elbs), 'event_count' : event_count, 'improper_elb': improperelb,
-            'subnet_counter': len(subnets), 'ip_low_subnet': ip_low_subnet})
+            'subnet_counter': len(subnets), 'ip_low_subnet': ip_low_subnet, 'vpc_count': len(vpcs)})
     return render_template('index.html', list=list)
 
 
-@app.route('/ebs_volumes/<region>/')
+@app.route('/ec2/ebs/volumes/<region>/')
 def ebs_volumes(region=None):
     ebs = aws.get_ebs(region)
     ebs_vol = []
@@ -188,18 +198,7 @@ def ebs_volumes(region=None):
     return render_template('ebs_volume.html', ebs_vol=ebs_vol, region=region)
 
 
-@app.route('/ebs_volumes/<region>/delete/<vol_id>')
-def delete_ebs_vol(region=None, vol_id=None):
-    creds = config.get_ec2_conf()
-    conn = connect_to_region(region, aws_access_key_id=creds['AWS_ACCESS_KEY_ID'], aws_secret_access_key=creds['AWS_SECRET_ACCESS_KEY'])
-    vol_id = vol_id.encode('ascii')
-    vol_ids = conn.get_all_volumes(volume_ids=vol_id)
-    for vol in vol_ids:
-        vol.delete()
-    return redirect(url_for('ebs_volumes', region=region))
-
-
-@app.route('/elastic_ips/<region>/')
+@app.route('/ec2/eips/<region>/')
 def elastic_ips(region=None):
     elis = aws.get_addresses(region)
     un_eli = []
@@ -211,19 +210,21 @@ def elastic_ips(region=None):
     return render_template('elastic_ip.html', un_eli=un_eli, region=region)
 
 
-@app.route('/elastic_ips/<region>/delete/<ip>')
-def delete_elastic_ip(region=None, ip=None):
-    creds = config.get_ec2_conf()
-    conn = connect_to_region(region, aws_access_key_id=creds['AWS_ACCESS_KEY_ID'], aws_secret_access_key=creds['AWS_SECRET_ACCESS_KEY'])
-    ip = ip.encode('ascii')
-    elis = conn.get_all_addresses(addresses=ip)
+@app.route('/elb/<region>/')
+def elbimproper(region=None):
+    elbs = aws.get_loadbalancers(region)
+    elb_list = []
+    for elb in elbs:
+        elb_info = {
+            'elb_name': elb.dns_name,
+            'elb_attached_instances': elb.instances,
+            'elb_healthcheck': elb.health_check
+        }
+        elb_list.append(elb_info)
+    return render_template('elb.html', elb_list=elb_list)
 
-    for eli in elis:
-        eli.release()
-    return redirect(url_for('elastic_ips', region=region))
 
-
-@app.route('/instance_events/<region>/')
+@app.route('/ec2/events/<region>/')
 def instance_events(region=None):
     instances = aws.get_instances(region)
     instance_event_list = []
@@ -238,14 +239,18 @@ def instance_events(region=None):
     return render_template('instance_events.html', instance_event_list=instance_event_list)
 
 
-@app.route('/instances/<region>/')
-def instances(region=None):
+@app.route('/ec2/instances/<region>/<vpcid>')
+@app.route('/ec2/instances/<region>/', defaults={'vpcid': None})
+def instances(region=None, vpcid=None):
     instances = aws.get_instances(region)
     instance_list = []
     for instance in instances:
-        #start = datetime.now()
         inst = aws.get_instance_info(region, instance.id)
-        #print (datetime.now()-start).seconds
+
+        ## If we pass vpc-id here we want only instances from a given vpc.
+        if vpcid and vpcid != inst['instance_vpc']:
+            continue
+
         instance_info = {
             'instance_id': instance.id,
             'instance_state': instance.state_name,
@@ -263,28 +268,39 @@ def instances(region=None):
     return render_template('instances.html', instance_list=instance_list)
 
 
-@app.route('/elbimproper/<region>/')
-def elbimproper(region=None):
-    elbs = aws.get_loadbalancers(region)
-    badelb = []
-    for elb in elbs:
-        elb_info = {'elb_name': elb.dns_name, 'elb_attached_instances': elb.instances,
-        'elb_healthcheck': elb.health_check}
-        badelb.append(elb_info)
-    return render_template('elb.html', badelb=badelb)
-
-
-@app.route('/vpc/subnet/<region>/')
-def subnet(region=None):
-    subnets = aws.get_subnets(region)
+@app.route('/vpc/subnet/<region>/<vpcid>')
+@app.route('/vpc/subnet/<region>/', defaults={'vpcid': None})
+def subnet_info(region=None, vpcid=None):
+    subnets = aws.get_subnets(region, vpcid)
     vpc_subnets = []
     for subnet in subnets:
-        subnet_info = {'subnet_id': subnet.id, 'subnet_vpc': subnet.vpc_id, 'subnet_state': subnet.state,
-        'subnet_cidr': subnet.cidr_block, 'subnet_az': subnet.availability_zone,
-        'subnet_avail_ip': subnet.available_ip_address_count, 'subnet_tags': flatten_tags(subnet.tags)}
+        subnet_info = {
+            'subnet_id': subnet.id,
+            'subnet_vpc': subnet.vpc_id,
+            'subnet_state': subnet.state,
+            'subnet_cidr': subnet.cidr_block,
+            'subnet_az': subnet.availability_zone,
+            'subnet_avail_ip': subnet.available_ip_address_count,
+            'subnet_tags': flatten_tags(subnet.tags)
+        }
         vpc_subnets.append(subnet_info)
     return render_template('subnet.html', vpc_subnets=vpc_subnets)
 
+
+@app.route('/vpc/list/<region>/')
+def list(region=None):
+    vpcs = aws.get_vpcs(region)
+    vpc_list = []
+    for vpc in vpcs:
+        vpc_info = {
+            'vpc_region': region,
+            'vpc_id': vpc.id,
+            'vpc_state': vpc.state,
+            'vpc_cidr': vpc.cidr_block,
+            'vpc_dhcp': vpc.dhcp_options_id
+        }
+        vpc_list.append(vpc_info)
+    return render_template('vpcs.html', vpcs=vpc_list)
 
 if __name__ == '__main__':
     app.debug = config.app_debug()

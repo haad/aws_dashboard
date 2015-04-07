@@ -1,0 +1,53 @@
+<!doctype html>
+<html>
+<head>
+  {% include "head.html" ignore missing %}
+  <title>AWS Dashboard - Subnet Free IPs</title>
+</head>
+<body>
+  {% include "navbar.html" ignore missing %}
+
+  <div class="container-fluid">
+    <div class="row">
+    <div class="scol-md-9 col-md-offset-1" align="center">
+       <h2><span class="label label-info">VPCs</span></h2><br/>
+       <p>
+        <table class="table table-striped display">
+          <thead>
+            <tr style="font-weight:bold">
+              <td>VPC ID</td>
+              <td>VPC State</td>
+              <td>CIDR Block</td>
+              <td>VPC DHCP options</td>
+              <td>VPC Subnets</td>
+              <td>VPC Instances</td>
+            </tr>
+          </thead>
+          {% for vpc in vpcs %}
+          <tr>
+            <td>
+              {{ vpc['vpc_id'] }}
+            </td>
+            <td>
+              {{ vpc['vpc_state'] }}
+            </td>
+            <td>
+              {{ vpc['vpc_cidr'] }}
+            </td>
+            <td>
+              {{ vpc['vpc_dhcp'] }}
+            </td>
+            <td>
+              <a href="/vpc/subnet/{{ vpc['vpc_region'] }}/{{ vpc['vpc_id'] }}"><button class="btn btn-xs btn-success" type="button">Subnets</button></a>
+            </td>
+            <td>
+              <a href="/ec2/instances/{{ vpc['vpc_region'] }}/{{ vpc['vpc_id'] }}"><button class="btn btn-xs btn-success" type="button">Instances</button></a>
+            </td>
+          </tr>
+          {% endfor %}
+        </table>
+       </p>
+    </div>
+  </div>
+</body>
+</html>
